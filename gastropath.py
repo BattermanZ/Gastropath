@@ -61,6 +61,7 @@ def get_place_details_from_google(restaurant_name):
                 print(f"City: {city}")
                 print(f"Google Maps Link: {google_maps_link}")
                 return {
+                    "name": details.get('name', restaurant_name),
                     "website": website,
                     "price_level": price_level,
                     "city": city,
@@ -92,7 +93,7 @@ def get_restaurants_from_notion():
     response = requests.post(url, headers=headers)
     if response.status_code == 200:
         results = response.json().get("results", [])
-        return [{"id": result["id"], "name": result["properties"]["Name"]["title"][0]["plain_text"]} for result in results if "Name" in result["properties"]]
+        return [{"id": result["id"], "name": result["properties"]["Name"]["title"][0]["plain_text"][:-1]} for result in results if "Name" in result["properties"] and result["properties"]["Name"]["title"][0]["plain_text"].endswith(';')]
     else:
         print(f"Failed to retrieve data from Notion: {response.status_code}, {response.text}")
         return []
@@ -121,6 +122,9 @@ def update_notion_entry(entry_id, details):
             },
             "Website": {
                 "url": details.get("website", "❓")
+            },
+            "Name": {
+                "title": [{"text": {"content": details.get("name", "❓")}}]
             }
         }
     }
@@ -154,10 +158,10 @@ def get_cuisine_type_from_yelp(restaurant_name, city):
 
 # Function to get details from Google and Yelp, and update Notion
 def process_restaurant(entry):
-    restaurant_name = entry["name"]
+    restaurant_name = entry["name"].rstrip(';')
     place_details = get_place_details_from_google(restaurant_name)
     if place_details:
-        cuisine_type = get_cuisine_type_from_yelp(restaurant_name, place_details.get("city"))
+        cuisine_type = get_cuisine_type_from_yelp(place_details.get("name"), place_details.get("city"))
     print(f"Cuisine Type: {cuisine_type}")
     place_details["cuisine_type"] = cuisine_type
     update_notion_entry(entry["id"], place_details)
