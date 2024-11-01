@@ -8,6 +8,7 @@ load_dotenv()
 
 # Google Places API setup
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+YELP_API_KEY = os.getenv("YELP_API_KEY")
 
 if not GOOGLE_API_KEY:
     print("Error: GOOGLE_API_KEY environment variable not set.")
@@ -75,11 +76,36 @@ def get_place_details_from_google(restaurant_name):
         print(f"Failed to retrieve data from Google: {response.status_code}, {response.text}")
         return None
 
+def get_cuisine_type_from_yelp(restaurant_name, city):
+    url = "https://api.yelp.com/v3/businesses/search"
+    headers = {
+        "Authorization": f"Bearer {YELP_API_KEY}"
+    }
+    params = {
+        "term": restaurant_name,
+        "location": city,
+        "limit": 1
+    }
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code == 200:
+        businesses = response.json().get('businesses')
+        if businesses:
+            business = businesses[0]
+            categories = [category['title'] for category in business.get('categories', [])]
+            return ', '.join(categories) if categories else 'No cuisine information available'
+        else:
+            return 'No match found on Yelp'
+    else:
+        print(f"Failed to retrieve data from Yelp: {response.status_code}, {response.text}")
+        return 'No cuisine information available'
 
 def main():
     restaurant_name = input("Enter the name of the restaurant: ")
     place_details = get_place_details_from_google(restaurant_name)
-
+    if place_details:
+        city = place_details.get('city', 'No city available')
+        cuisine_type = get_cuisine_type_from_yelp(restaurant_name, city)
+        print(f"Cuisine Type: {cuisine_type}")
 
 if __name__ == "__main__":
     main()
