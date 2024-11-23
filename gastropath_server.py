@@ -13,4 +13,4 @@ def run_gastropath():
         return str(e), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3754)
+    app.run(debug=True, port=9999, host='0.0.0.0')
