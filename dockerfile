@@ -1,5 +1,5 @@
-# Use the Python slim image
-FROM python:3.9-slim
+# Build stage
+FROM python:3.9-slim AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -16,7 +16,17 @@ COPY requirements.txt requirements.txt
 # Install the required Python packages using requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application files
+# Runtime stage
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy Python packages from builder stage
+COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy the application files
 COPY . .
 
 # Set environment variables
