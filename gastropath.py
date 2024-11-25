@@ -11,8 +11,25 @@ import urllib.parse
 import urllib.request
 import sys
 
+# Create logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log_filename = "logs/gastropath.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename, mode='a'),
+        logging.StreamHandler()
+    ]
+)
+
+# Add a separator for new run
+logging.info("=" * 50)
+logging.info("New Gastropath run started")
+logging.info("=" * 50)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -241,7 +258,10 @@ def create_notion_entry(details, cover_url=None):
         "Notion-Version": "2022-06-28"
     }
     data = {
-        "parent": {"database_id": NOTION_DATABASE_ID},
+        "parent": {
+            "database_id": NOTION_DATABASE_ID,
+            "type": "database_id"
+        },
         "properties": {
             "City": {
                 "rich_text": [{"text": {"content": details.get("city", "❓")}}]
@@ -261,6 +281,10 @@ def create_notion_entry(details, cover_url=None):
             "Name": {
                 "title": [{"text": {"content": details.get("name", "❓")}}]
             }
+        },
+        "icon": {
+            "type": "emoji",
+            "emoji": "🍽️"
         }
     }
     if cover_url:
@@ -270,10 +294,13 @@ def create_notion_entry(details, cover_url=None):
                 "url": cover_url
             }
         }
+    
+    logging.info(f"Creating new Notion entry")
     response = requests.post(url, headers=headers, json=data)
     if response.status_code != 200:
         logging.error(f"Failed to create Notion entry: {response.status_code}, {response.text}")
         return False
+    logging.info("Successfully created new Notion entry")
     return True
 
 def get_cuisine_type_from_yelp(restaurant_name, city):
