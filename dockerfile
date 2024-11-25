@@ -19,8 +19,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application files
 COPY . .
 
+# Set environment variables
+ENV FLASK_APP=gastropath_server.py
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=3754
+
 # Expose port 3754 for Flask server
 EXPOSE 3754
 
 # Run the Flask server when the container starts
-CMD ["python", "gastropath_server.py"]
+CMD ["flask", "run"]
