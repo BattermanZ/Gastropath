@@ -150,10 +150,12 @@ def process_place_details(details):
     address_components = details.get('address_components', [])
 
     city = 'No city available'
+    country = 'No country available'
     for component in address_components:
         if 'locality' in component.get('types', []):
             city = component.get('long_name')
-            break
+        if 'country' in component.get('types', []):
+            country = component.get('long_name')
 
     google_maps_link = details.get('url', "No link available")
 
@@ -166,6 +168,7 @@ def process_place_details(details):
         "website": website,
         "price_level": price_level,
         "city": city,
+        "country": country,
         "google_maps_link": google_maps_link,
         "address": details.get('formatted_address', 'No address available'),
         "photo_reference": photo_reference
@@ -220,6 +223,9 @@ def update_notion_entry(entry_id, details, cover_url=None):
             "City": {
                 "rich_text": [{"text": {"content": details.get("city", "❓")}}]
             },
+            "Country": {
+                "rich_text": [{"text": {"content": details.get("country", "❓")}}]
+            },
             "Cuisine Type": {
                 "rich_text": [{"text": {"content": details.get("cuisine_type", "❓")}}]
             },
@@ -265,6 +271,9 @@ def create_notion_entry(details, cover_url=None):
         "properties": {
             "City": {
                 "rich_text": [{"text": {"content": details.get("city", "❓")}}]
+            },
+            "Country": {
+                "rich_text": [{"text": {"content": details.get("country", "❓")}}]
             },
             "Cuisine Type": {
                 "rich_text": [{"text": {"content": details.get("cuisine_type", "❓")}}]
