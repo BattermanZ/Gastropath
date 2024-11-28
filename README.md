@@ -1,6 +1,7 @@
 # Gastropath
 
 Gastropath is an automated restaurant database updater that integrates information from Google Maps and Yelp into a Notion database. It streamlines the process of cataloging and managing restaurant information for food enthusiasts, critics, or anyone maintaining a personal dining database.
+It can be coupled with an iOS shortcut for easy updating directly from the Google Maps app.
 
 ## Features
 
@@ -24,7 +25,6 @@ cd gastropath
 
 2. Build the project: cargo build --release
 
-
 3. Set up environment variables:
 Create a `.env` file in the project root and add the following variables:
 GOOGLE_API_KEY=your_google_api_key
@@ -34,6 +34,7 @@ NOTION_DATABASE_ID=your_notion_database_id
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+API_KEY=your_generated_api_key_for_authentication
 
 
 ## API Endpoints
