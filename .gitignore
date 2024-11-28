@@ -2,3 +2,4 @@
 venv/
 helpers/
 *.log
+target/
