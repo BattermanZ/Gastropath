@@ -10,18 +10,20 @@ Gastropath is an automated restaurant database updater that integrates informati
 - Uploads restaurant images to Cloudinary
 - Creates or updates entries in a Notion database
 - Supports single restaurant additions
-- Provides a Flask-based API server for easy integration
+- Provides an Actix-based API server for easy integration
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Rust 1.82.0 or higher
 - Docker (for containerized deployment)
 
 ## Installation
 
-1. Clone the repository:
+1. Clone the repository: git clone [https://github.com/yourusername/gastropath.git](https://github.com/yourusername/gastropath.git)
+cd gastropath
 
-2. Install required packages: pip install -r requirements.txt
+2. Build the project: cargo build --release
+
 
 3. Set up environment variables:
 Create a `.env` file in the project root and add the following variables:
@@ -32,21 +34,23 @@ NOTION_DATABASE_ID=your_notion_database_id
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-API_KEY=your_custom_api_key_for_gastropath_server
 
 
 ## API Endpoints
 
 - `POST /add_restaurant`
 - Adds a new restaurant to the Notion database
-- Requires `X-API-Key` header for authentication
-- Request body: `{ "URL": "https://maps.app.goo.gl/example" }`
+- Request body: `{ "url": "https://maps.app.goo.gl/example" }`
 
 ## Main Components
 
-- `gastropath.py`: Core script for processing restaurant information
-- `gastropath_server.py`: Flask server for handling API requests
-- `get_template_id.py`: Utility script for retrieving Notion database template IDs
+- `main.rs`: Entry point and server setup
+- `google_places.rs`: Handles Google Places API interactions
+- `yelp.rs`: Manages Yelp API requests
+- `notion.rs`: Handles Notion database operations
+- `cloudinary.rs`: Manages image uploads to Cloudinary
+- `utils.rs`: Utility functions
+- `logging.rs`: Logging configuration
 
 ## Configuration
 
@@ -64,14 +68,13 @@ Ensure your Notion database has the following properties:
 ### Rate Limiting
 
 The server implements rate limiting to prevent abuse:
-- 5 requests per minute
-- 10 requests per hour
+- 5 requests per second
+- 10 requests burst
 
 ## Logging
 
 Logs are stored in the `logs` directory:
-- `gastropath.log`: Main application log
-- `gastropath_server.log`: Server log
+- `gastropath.log`: Application log
 
 ## Error Handling
 
@@ -86,17 +89,18 @@ The application includes error handling for:
 - Input URLs are validated and sanitized
 - HTTPS is recommended for production deployments
 
+
 ## Acknowledgments
 
 - Google Places API
 - Yelp Fusion API
 - Notion API
 - Cloudinary
-- Flask and Flask-Limiter
-
+- Actix web framework
 
 ## Disclaimer
 
 This project is licensed under the GNU Affero General Public License (AGPL) - see the [LICENSE](LICENSE) file for details.
 
 This project is not affiliated with Google, Yelp, Notion, or Cloudinary. Use of their APIs is subject to their respective terms of service.
+

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  gastropath:
+    image: gastropath:v2.1.1
+    container_name: gastropath-container
+    ports:
+      - "3754:3754"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
