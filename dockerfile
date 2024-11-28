@@ -1,41 +1,40 @@
 # Build stage
-FROM python:3.9-slim AS builder
+FROM rust:1.82.0-slim-bookworm as builder
 
 # Set the working directory in the container
-WORKDIR /app
+WORKDIR /usr/src/gastropath
 
-# Install system-level dependencies that are often required
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libjpeg-dev \
-    zlib1g-dev \
+    pkg-config \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file
-COPY requirements.txt requirements.txt
+# Copy the Cargo.toml and Cargo.lock files
+COPY Cargo.toml Cargo.lock ./
 
-# Install the required Python packages using requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the source code
+COPY src ./src
+
+# Build the application
+RUN cargo build --release
 
 # Runtime stage
-FROM python:3.9-slim
+FROM debian:bookworm-slim
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy Python packages from builder stage
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the application files
-COPY . .
+# Copy the built executable from the builder stage
+COPY --from=builder /usr/src/gastropath/target/release/gastropath /app/gastropath
 
-# Set environment variables
-ENV FLASK_APP=gastropath_server.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=3754
-
-# Expose port 3754 for Flask server
+# Expose port 3754
 EXPOSE 3754
 
-# Run the Flask server when the container starts
-CMD ["flask", "run"]
+# Command to run the executable
+CMD ["./gastropath"]

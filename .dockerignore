@@ -1,7 +1,28 @@
+# Environment and configuration
 .env
-venv
-__pycache__
-*.pyc
-*.pyo
-.git
-.vscode
+.gitignore
+.git/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts and dependencies
+target/
+venv/
+
+# Logs
+logs/
+*.log
+
+# Documentation
+README.md
+
+# Development files
+helpers/
+
+# OS-specific
+.DS_Store
+Thumbs.db

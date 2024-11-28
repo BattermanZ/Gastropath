@@ -179,7 +179,7 @@ async fn main() -> std::io::Result<()> {
             .route("/health", web::get().to(health_check))
             .route("/add_restaurant", web::post().to(add_restaurant))
     })
-    .bind("0.0.0.0:9999")?
+    .bind("0.0.0.0:3754")?
     .run()
     .await
 }
