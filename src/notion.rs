@@ -8,25 +8,23 @@ pub async fn create_or_update_entry(
     client: &Client,
     details: RestaurantDetails,
     cover_url: Option<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<String, String> {
     info!("Creating or updating Notion entry for: {}", details.name);
-    let api_key = env::var("NOTION_API_KEY")?;
-    let database_id = env::var("NOTION_DATABASE_ID")?;
+    let api_key = env::var("NOTION_API_KEY").map_err(|e| e.to_string())?;
+    let database_id = env::var("NOTION_DATABASE_ID").map_err(|e| e.to_string())?;
 
     let existing_entry = find_existing_entry(client, &api_key, &database_id, &details.name).await?;
+
+    if existing_entry.is_some() {
+        return Ok("Restaurant already in the database".to_string());
+    }
 
     let url = "https://api.notion.com/v1/pages".to_string();
 
     debug!("Notion API request URL: {}", url);
 
-    debug!("Notion API Key (first 4 chars): {}", &api_key[..4]);
-    debug!("Notion Database ID: {}", database_id);
-    debug!("Notion API Version: 2022-06-28");
-    debug!("Request URL: {}", url);
-
-    debug!("Notion API request URL: {}", url);
-
     let mut data = json!({
+        "parent": { "database_id": database_id },
         "properties": {
             "City": {
                 "rich_text": [{"text": {"content": details.city}}]
@@ -49,13 +47,9 @@ pub async fn create_or_update_entry(
             "Name": {
                 "title": [{"text": {"content": details.name}}]
             }
-        }
+        },
+        "icon": {"type": "emoji", "emoji": "🍽️"}
     });
-
-    if existing_entry.is_none() {
-        data["parent"] = json!({"database_id": database_id});
-        data["icon"] = json!({"type": "emoji", "emoji": "🍽️"});
-    }
 
     if let Some(url) = cover_url {
         data["cover"] = json!({"type": "external", "external": {"url": url}});
@@ -63,28 +57,21 @@ pub async fn create_or_update_entry(
 
     debug!("Notion API request data: {:?}", data);
 
-    debug!("Sending request to Notion API");
-    debug!("Headers: Authorization: Bearer <redacted>, Notion-Version: {}", "2022-06-28");
-    debug!("Request body: {}", serde_json::to_string_pretty(&data).unwrap());
-
     let response = client.post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Notion-Version", "2022-06-28")
         .json(&data)
         .send()
-        .await?;
+        .await
+        .map_err(|e| e.to_string())?;
 
     if response.status().is_success() {
-        info!("Successfully {} {} in Notion", if existing_entry.is_some() { "updated" } else { "created" }, details.name);
-        Ok(())
+        Ok("Restaurant successfully added to Gastropath".to_string())
     } else {
         let status = response.status();
-        let headers = response.headers().clone();
-        let error_body = response.text().await?;
-        error!("Failed to update Notion. Status: {}", status);
-        error!("Response headers: {:?}", headers);
-        error!("Error body: {}", error_body);
-        Err(format!("Failed to create Notion entry: {} - {}", status, error_body).into())
+        let error_body = response.text().await.map_err(|e| e.to_string())?;
+        error!("Failed to create Notion entry. Status: {}, Body: {}", status, error_body);
+        Err("Failed to add restaurant to Gastropath".to_string())
     }
 }
 
@@ -93,7 +80,7 @@ async fn find_existing_entry(
     api_key: &str,
     database_id: &str,
     restaurant_name: &str,
-) -> Result<Option<String>, Box<dyn std::error::Error>> {
+) -> Result<Option<String>, String> {
     let url = format!("https://api.notion.com/v1/databases/{}/query", database_id);
     debug!("Querying Notion database: {}", url);
 
@@ -111,9 +98,11 @@ async fn find_existing_entry(
         .header("Notion-Version", "2022-06-28")
         .json(&query)
         .send()
-        .await?
+        .await
+        .map_err(|e| e.to_string())?
         .json::<Value>()
-        .await?;
+        .await
+        .map_err(|e| e.to_string())?;
 
     debug!("Notion query response: {:?}", response);
 

@@ -726,7 +726,7 @@ dependencies = [
 
 [[package]]
 name = "gastropath"
-version = "0.1.0"
+version = "2.1.0"
 dependencies = [
  "actix-governor",
  "actix-web",

@@ -6,14 +6,14 @@ use log4rs::{
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use std::fs;
 
 pub fn setup_logging() -> Result<(), Box<dyn std::error::Error>> {
     // Create logs directory if it doesn't exist
     fs::create_dir_all("logs")?;
 
-    let log_pattern = "{d(%Y-%m-%d %H:%M:%S)} | {({l}):5.5} | {f}:{L} - {m}{n}";
+    let log_pattern = "{d(%Y-%m-%d %H:%M:%S)} - {l} - {m}{n}";
 
     // Create a stdout appender
     let stdout = ConsoleAppender::builder()
@@ -33,7 +33,7 @@ pub fn setup_logging() -> Result<(), Box<dyn std::error::Error>> {
             Root::builder()
                 .appender("stdout")
                 .appender("file")
-                .build(LevelFilter::Debug), // Changed from Info to Debug
+                .build(LevelFilter::Info),
         )?;
 
     // Initialize the logger
@@ -42,5 +42,9 @@ pub fn setup_logging() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
+pub fn log_start_message() {
+    info!("==================================================");
+    info!("New Gastropath run started");
+    info!("==================================================");
+}
 

@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use std::env;
-use log::{info, error, debug, warn};
+use log::{info, error, warn};
 use actix_governor::{Governor, GovernorConfigBuilder};
 
 mod google_places;
@@ -40,10 +40,7 @@ pub struct RestaurantDetails {
 }
 
 async fn health_check() -> impl Responder {
-    HttpResponse::Ok().json(serde_json::json!({
-        "status": "healthy",
-        "message": "Server is running"
-    }))
+    HttpResponse::Ok().body("Server is running")
 }
 
 async fn add_restaurant(
@@ -51,108 +48,88 @@ async fn add_restaurant(
     client: web::Data<Client>,
 ) -> impl Responder {
     let request_id = chrono::Utc::now().format("%Y%m%d%H%M%S%f").to_string();
-    info!("Request {}: Add restaurant request received", request_id);
-    
-    // Log raw request body for debugging
-    let body_str = String::from_utf8_lossy(&body);
-    debug!("Request {}: Raw request body: {}", request_id, body_str);
+    info!("Processing restaurant: {}", String::from_utf8_lossy(&body));
 
     // Try to parse the request body
     let req = match serde_json::from_slice::<AddRestaurantRequest>(&body) {
         Ok(req) => req,
         Err(e) => {
             let error_msg = format!("Invalid request format: {}", e);
-            error!("Request {}: {}", request_id, error_msg);
-            
-            // Return a helpful error response with expected format
-            let expected_format = serde_json::json!({
-                "url": "https://maps.app.goo.gl/example"
-            });
-            
-            return HttpResponse::BadRequest().json(ErrorResponse {
-                error: error_msg,
-                expected_format,
-            });
+            error!("{}", error_msg);
+            return HttpResponse::BadRequest().body(error_msg);
         }
     };
-
-    debug!("Request {}: Received URL: {}", request_id, req.url);
-    debug!("Request {}: Parsed request body: {:?}", request_id, req);
 
     let sanitized_url = match utils::validate_and_sanitize_url(&req.url) {
         Ok(url) => url,
         Err(e) => {
-            error!("Request {}: URL validation failed: {}", request_id, e);
-            return HttpResponse::BadRequest().json(ErrorResponse {
-                error: e,
-                expected_format: serde_json::json!({
-                    "url": "https://maps.app.goo.gl/example"
-                }),
-            });
+            error!("URL validation failed: {}", e);
+            return HttpResponse::BadRequest().body(e);
         }
     };
 
-    info!("Request {}: Sanitized URL: {}", request_id, sanitized_url);
+    info!("Getting place details for: {}", sanitized_url);
 
     let place_details = match google_places::get_place_details(&client, &sanitized_url).await {
         Ok(details) => details,
         Err(e) => {
-            error!("Request {}: Error getting place details: {}", request_id, e);
-            return HttpResponse::InternalServerError().json(ErrorResponse {
-                error: format!("Failed to get place details: {}", e),
-                expected_format: serde_json::json!({
-                    "url": "https://maps.app.goo.gl/example"
-                }),
-            });
+            error!("Error getting place details: {}", e);
+            return HttpResponse::InternalServerError().body(format!("Failed to get place details: {}", e));
         }
     };
 
-    debug!("Request {}: Place details: {:?}", request_id, place_details);
-
     let cover_url = match cloudinary::upload_image(&client, &place_details.photo_reference).await {
-        Ok(url) => Some(url),
+        Ok(url) => {
+            info!("Updating {} - Cover Image: Updated", place_details.name);
+            Some(url)
+        },
         Err(e) => {
-            warn!("Request {}: Failed to upload image: {}", request_id, e);
+            warn!("Failed to upload image for {}: {}", place_details.name, e);
             None
         }
     };
 
     let cuisine_type = match yelp::get_cuisine_type(&client, &place_details.name, &place_details.city).await {
-        Ok(cuisine) => cuisine,
+        Ok(cuisine) => {
+            info!("Updating {} - Cuisine Type: {}", place_details.name, cuisine);
+            cuisine
+        },
         Err(e) => {
-            warn!("Request {}: Failed to get cuisine type: {}", request_id, e);
+            warn!("Failed to get cuisine type for {}: {}", place_details.name, e);
             "❓".to_string()
         }
     };
 
     let restaurant_details = RestaurantDetails {
-        name: place_details.name,
-        website: place_details.website,
-        price_level: place_details.price_level,
-        city: place_details.city,
-        country: place_details.country,
-        google_maps_link: place_details.google_maps_link,
-        address: place_details.address,
-        cuisine_type,
-        photo_reference: place_details.photo_reference,
+        name: place_details.name.clone(),
+        website: place_details.website.clone(),
+        price_level: place_details.price_level.clone(),
+        city: place_details.city.clone(),
+        country: place_details.country.clone(),
+        google_maps_link: place_details.google_maps_link.clone(),
+        address: place_details.address.clone(),
+        cuisine_type: cuisine_type.clone(),
+        photo_reference: place_details.photo_reference.clone(),
     };
 
-    match notion::create_or_update_entry(&client, restaurant_details.clone(), cover_url).await {
-        Ok(_) => {
-            info!("Request {}: Restaurant added successfully", request_id);
-            HttpResponse::Ok().json(serde_json::json!({
-                "status": "success",
-                "message": "Restaurant added successfully"
-            }))
+    // Log all the details
+    info!("Updating {} - name: {}", place_details.name, restaurant_details.name);
+    info!("Updating {} - website: {}", place_details.name, restaurant_details.website);
+    info!("Updating {} - price_level: {}", place_details.name, restaurant_details.price_level);
+    info!("Updating {} - city: {}", place_details.name, restaurant_details.city);
+    info!("Updating {} - country: {}", place_details.name, restaurant_details.country);
+    info!("Updating {} - google_maps_link: {}", place_details.name, restaurant_details.google_maps_link);
+    info!("Updating {} - address: {}", place_details.name, restaurant_details.address);
+    info!("Updating {} - cuisine_type: {}", place_details.name, restaurant_details.cuisine_type);
+
+    match notion::create_or_update_entry(&client, restaurant_details, cover_url).await {
+        Ok(message) => {
+            info!("{}", message);
+            HttpResponse::Ok().body(message)
         },
         Err(e) => {
-            error!("Request {}: Error adding restaurant: {}", request_id, e);
-            HttpResponse::InternalServerError().json(ErrorResponse {
-                error: format!("Failed to add restaurant to Notion: {}", e),
-                expected_format: serde_json::json!({
-                    "url": "https://maps.app.goo.gl/example"
-                }),
-            })
+            error!("Error adding restaurant to Notion: {}", e);
+            HttpResponse::InternalServerError().body(e)
         }
     }
 }
@@ -181,6 +158,7 @@ async fn main() -> std::io::Result<()> {
         return Ok(());
     }
 
+    logging::log_start_message();
     log_environment_variables();
 
     let client = Client::new();
@@ -205,4 +183,3 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-
